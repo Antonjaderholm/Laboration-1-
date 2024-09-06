@@ -1,4 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using System.Numerics;
+
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -20,21 +22,21 @@ while (!quit)
 
         default:
 
-            Labb1(input); // Bearbeta inmatningen direkt.
+            Labb1(input); // Process the input directly 
             break;
     }
 
 
     void Labb1(string text)
     {
-        Console.WriteLine();    
+        Console.WriteLine();    // Ny rad
 
         int numberIndex = -1;       // Start index för siffran
         int numberIndexEnd = -1;    // Slut index för siffran
         int numbersFound = 0;       // Antal nummer vi har hittat totalt
         string numberText = "";     // Nummer omvandlat till text
 
-        BigInteger totalSumBIG = 0; // Datatyp för att hålla, i teorin, hur stort tal som helst
+        BigInteger totalSumBIG = 0; // Datatyp för att hålla, i teorin, ett hur stort tal som helst
                                     //long totalSum = 0;
 
         // Loopa igenom alla tecken i texten
@@ -43,7 +45,7 @@ while (!quit)
             // Om det nuvarande tecknet är en siffra
             if (Char.IsDigit(text[currentChar]))
             {
-                // Spara vilket index, siffran har
+                // Spara vilket index siffran har
                 numberIndex = currentChar;
 
                 // Loopa igenom resten av texten från och med nästa tecken
@@ -60,13 +62,13 @@ while (!quit)
                         // Spara slutindexet av talet (+1 för att inkludera sista siffran i talet)
                         numberIndexEnd = nextChar + 1;
 
-                        // Om talet enbart är 2 siffror långt & vi ej vill räkna med det, avbryt andra loopen
+                        // Om talet bara är 2 siffror långt & vi inte vill räkna med det, avbryt andra loopen
                         if (numberIndexEnd - numberIndex == 2 && !countShortNumbers)
                         {
                             break;
                         }
 
-                        // Annars hämtar resultatet från metoder här nedan.
+                        // Annars hämtar resultatet från metoder nedan.
                         else
                         {
                             TextColor(text, numberIndex, numberIndexEnd, ConsoleColor.Blue);
