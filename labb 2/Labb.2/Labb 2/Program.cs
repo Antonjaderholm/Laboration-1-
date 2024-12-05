@@ -908,59 +908,32 @@ namespace BokhandelSystem
             }
 
             Console.Write("\nAnge författarens ID: ");
-            if (!int.TryParse(Console.ReadLine(), out int authorId))
+            if (int.TryParse(Console.ReadLine(), out int authorId))
             {
-                Console.WriteLine("Ogiltigt ID.");
-                return;
-            }
-
-            var selectedAuthor = authors.FirstOrDefault(a => a.Id == authorId);
-            if (selectedAuthor == null)
-            {
-                Console.WriteLine("Författaren hittades inte.");
-                return;
-            }
-
-            Console.WriteLine($"\nÄr du säker på att du vill ta bort {selectedAuthor.FullName}?");
-            Console.WriteLine($"Detta kommer även ta bort {selectedAuthor.BookCount} böcker.");
-            Console.Write("Skriv 'JA' för att bekräfta: ");
-
-            if (Console.ReadLine()?.ToUpper() == "JA")
-            {
-                try
+                var selectedAuthor = authors.FirstOrDefault(a => a.Id == authorId);
+                if (selectedAuthor != null)
                 {
-                    using (var transaction = context.Database.BeginTransaction())
+                    Console.WriteLine($"\nÄr du säker på att du vill ta bort {selectedAuthor.FullName}?");
+                    Console.WriteLine($"Detta kommer även ta bort {selectedAuthor.BookCount} böcker.");
+                    Console.Write("Skriv 'JA' för att bekräfta: ");
+
+                    if (Console.ReadLine()?.ToUpper() == "JA")
                     {
                         var deleteQuery = FormattableStringFactory.Create(@"
-                    DELETE FROM dbo.Lagersaldo 
-                    WHERE ISBN IN (SELECT ISBN13 FROM dbo.Böcker WHERE [FörfattareId] = {0});
-                    
-                    DELETE FROM dbo.Böcker 
-                    WHERE [FörfattareId] = {0};
-                    
-                    DELETE FROM dbo.[Författare] 
-                    WHERE Id = {0}", authorId);
+                    DELETE FROM dbo.[Författare] WHERE Id = {0}", authorId);
 
                         var rowsAffected = context.Database.ExecuteSql(deleteQuery);
-
-                        if (rowsAffected > 0)
-                        {
-                            transaction.Commit();
-                            Console.WriteLine("Författaren och alla tillhörande böcker har tagits bort!");
-                        }
-                        else
-                        {
-                            transaction.Rollback();
-                            Console.WriteLine("Kunde inte ta bort författaren. Kontrollera om författaren fortfarande finns.");
-                        }
+                        Console.WriteLine(rowsAffected > 0
+                            ? "Författaren och alla tillhörande böcker har tagits bort!"
+                            : "Kunde inte hitta författaren.");
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Ett fel uppstod: {ex.Message}");
-                }
             }
+
+            Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
+            Console.ReadKey();
         }
+
     }
 }
    
