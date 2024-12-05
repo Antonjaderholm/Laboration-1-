@@ -212,9 +212,9 @@ namespace BokhandelSystem
                 {
                     var nyFörfattare = new Författare
                     {
-                        Förnamn = förnamn,  // Match the exact property name from your model
+                        Förnamn = förnamn,  // Matcha det exakta egenskapsnamnet från din modell
                         Efternamn = efternamn,
-                        Födelsedatum = födelsedatum,  // Match the exact property name from your model
+                        Födelsedatum = födelsedatum,  // Matcha det exakta egenskapsnamnet från din modell
                         Böcker = new List<Böcker>()
                     };
 
@@ -740,7 +740,7 @@ namespace BokhandelSystem
                 Console.WriteLine("Ange ett giltigt antal större än 0.");
             } while (true);
 
-            // Get current stock before update
+            // Få nuvarande saldo innan uppdatering
             var currentStock = context.Lagersaldo
                 .FirstOrDefault(l => l.ButikId == selectedStoreId && l.ISBN == isbn);
 
@@ -759,7 +759,7 @@ namespace BokhandelSystem
             Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
             Console.ReadKey();
         }
-        // Lägg till denna DTO-klass för författarinformation
+        // DTO-klass för författarinformation
         public class AuthorEditDTO
         {
             public int Id { get; set; }
@@ -829,7 +829,7 @@ namespace BokhandelSystem
             Console.ReadKey();
         }
 
-        // Lägg till denna DTO-klass för bokradering
+        // DTO-klass för bokradering
         public class BookDeleteDTO
         {
             public string ISBN13 { get; set; }
