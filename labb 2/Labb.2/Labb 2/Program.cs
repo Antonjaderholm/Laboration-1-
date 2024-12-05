@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Data.SqlClient;
 using System.Runtime.CompilerServices;
+using static BokhandelSystem.Program;
 
 namespace BokhandelSystem
 {
@@ -93,7 +94,7 @@ namespace BokhandelSystem
     public class Lagersaldo
     {
         public int ButikId { get; set; }
-        public string ISBN { get; set; }  
+        public string ISBN { get; set; }
         public int Antal { get; set; }
 
         [ForeignKey("ISBN")]
@@ -144,7 +145,6 @@ namespace BokhandelSystem
             while (true)
             {
                 // Visar huvudmenyn
-                Console.Clear();
                 Console.WriteLine("=== Bokhandelssystem ===");
                 Console.WriteLine("1. Visa lagersaldo");
                 Console.WriteLine("2. Lägg till bok i butik");
@@ -152,7 +152,10 @@ namespace BokhandelSystem
                 Console.WriteLine("4. Lägg till ny bok");
                 Console.WriteLine("5. Lägg till författare");
                 Console.WriteLine("6. Redigera bok");
-                Console.WriteLine("7. Avsluta");
+                Console.WriteLine("7. Redigera författare");
+                Console.WriteLine("8. Ta bort bok");
+                Console.WriteLine("9. Ta bort författare");
+                Console.WriteLine("10. Avsluta");
 
                 // Hanterar användarens val
                 var val = Console.ReadLine();
@@ -178,6 +181,15 @@ namespace BokhandelSystem
                         RedigeraBok(context);
                         break;
                     case "7":
+                        RedigeraFörfattare(context);
+                        break;
+                    case "8":
+                        TaBortBok(context);
+                        break;
+                    case "9":
+                        TaBortFörfattare(context);
+                        break;
+                    case "10":
                         return;
                 }
             }
@@ -562,7 +574,7 @@ namespace BokhandelSystem
                 return;
             }
 
-            
+
             // Få book med säker SQL query
             var valdBok = context.Database
     .SqlQuery<BookEditDTO>(FormattableStringFactory.Create(@"
@@ -636,8 +648,6 @@ namespace BokhandelSystem
                 Console.ReadKey();
             }
         }
-
-
 
         public class BookStockDetails
         {
@@ -749,8 +759,215 @@ namespace BokhandelSystem
             Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
             Console.ReadKey();
         }
+        // Lägg till denna DTO-klass för författarinformation
+        public class AuthorEditDTO
+        {
+            public int Id { get; set; }
+            public string Förnamn { get; set; }
+            public string Efternamn { get; set; }
+            public DateTime Födelsedatum { get; set; }
+        }
+
+
+
+        static void RedigeraFörfattare(BokhandelContext context)
+        {
+            Console.WriteLine("\nVälj författare att redigera:");
+
+            var authors = context.Database.SqlQuery<AuthorListItem>($@"
+        SELECT 
+            Id,
+            CONCAT([Förnamn], ' ', [Efternamn]) as FullName
+        FROM dbo.[Författare]
+        ORDER BY [Efternamn], [Förnamn]").ToList();
+
+            foreach (var author in authors)
+            {
+                Console.WriteLine($"{author.Id}. {author.FullName}");
+            }
+
+            Console.Write("\nAnge författarens ID: ");
+            if (!int.TryParse(Console.ReadLine(), out int authorId))
+            {
+                Console.WriteLine("Ogiltigt ID.");
+                return;
+            }
+
+            var författare = context.Författare.FirstOrDefault(f => f.Id == authorId);
+            if (författare == null)
+            {
+                Console.WriteLine("Författaren hittades inte.");
+                return;
+            }
+
+            Console.WriteLine($"\nNuvarande information:");
+            Console.WriteLine($"Förnamn: {författare.Förnamn}");
+            Console.WriteLine($"Efternamn: {författare.Efternamn}");
+            Console.WriteLine($"Födelsedatum: {författare.Födelsedatum:yyyy-MM-dd}");
+
+            Console.Write("\nNytt förnamn (eller Enter för att behålla nuvarande): ");
+            var nyttFörnamn = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(nyttFörnamn))
+                författare.Förnamn = nyttFörnamn;
+
+            Console.Write("Nytt efternamn (eller Enter för att behålla nuvarande): ");
+            var nyttEfternamn = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(nyttEfternamn))
+                författare.Efternamn = nyttEfternamn;
+
+            try
+            {
+                context.SaveChanges();
+                Console.WriteLine("Författaren har uppdaterats!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ett fel uppstod: {ex.Message}");
+            }
+
+            Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
+            Console.ReadKey();
+        }
+
+        // Lägg till denna DTO-klass för bokradering
+        public class BookDeleteDTO
+        {
+            public string ISBN13 { get; set; }
+            public string Titel { get; set; }
+            public bool HasInventory { get; set; }
+        }
+        static void TaBortBok(BokhandelContext context)
+        {
+            Console.WriteLine("\nVälj bok att ta bort:");
+
+            var books = context.Database.SqlQuery<BookDetails>($@"
+        SELECT 
+            b.ISBN13, 
+            b.Titel,
+            b.[Språk],
+            b.Pris,
+            b.Utgivningsdatum,
+            CONCAT(f.[Förnamn], ' ', f.[Efternamn]) as Författare,
+            fl.[Namn] as Förlag
+        FROM dbo.Böcker b
+        LEFT JOIN dbo.[Författare] f ON b.[FörfattareId] = f.Id
+        LEFT JOIN dbo.[Förlag] fl ON b.[FörlagId] = fl.Id").ToList();
+
+            foreach (var book in books)
+            {
+                Console.WriteLine($"ISBN13: {book.ISBN13}");
+                Console.WriteLine($"Titel: {book.Titel}");
+                Console.WriteLine($"Författare: {book.Författare}");
+                Console.WriteLine("------------------------");
+            }
+
+            Console.Write("\nAnge ISBN13 för boken som ska tas bort: ");
+            var isbn = Console.ReadLine()?.Trim();
+
+            try
+            {
+                var deleteQuery = FormattableStringFactory.Create(@"
+            DELETE FROM dbo.Lagersaldo WHERE ISBN = {0};
+            DELETE FROM dbo.Böcker WHERE ISBN13 = {0};", isbn);
+
+                var rowsAffected = context.Database.ExecuteSql(deleteQuery);
+                Console.WriteLine(rowsAffected > 0 ? "Boken har tagits bort!" : "Ingen bok hittades med angivet ISBN.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ett fel uppstod: {ex.Message}");
+            }
+
+            Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
+            Console.ReadKey();
+        }
+        //DTO class for author deletion
+        public class AuthorDeleteDTO
+        {
+            public int Id { get; set; }
+            public string FullName { get; set; }
+            public int BookCount { get; set; }
+        }
+        static void TaBortFörfattare(BokhandelContext context)
+        {
+            Console.WriteLine("\nVälj författare att ta bort:");
+
+            var authors = context.Database.SqlQuery<AuthorDeleteDTO>($@"
+        SELECT 
+            f.Id,
+            CONCAT(f.[Förnamn], ' ', f.[Efternamn]) as FullName,
+            COUNT(b.ISBN13) as BookCount
+        FROM dbo.[Författare] f
+        LEFT JOIN dbo.Böcker b ON f.Id = b.[FörfattareId]
+        GROUP BY f.Id, f.[Förnamn], f.[Efternamn]
+        ORDER BY FullName").ToList();
+
+            foreach (var author in authors)
+            {
+                Console.WriteLine($"{author.Id}. {author.FullName} (Antal böcker: {author.BookCount})");
+            }
+
+            Console.Write("\nAnge författarens ID: ");
+            if (!int.TryParse(Console.ReadLine(), out int authorId))
+            {
+                Console.WriteLine("Ogiltigt ID.");
+                return;
+            }
+
+            var selectedAuthor = authors.FirstOrDefault(a => a.Id == authorId);
+            if (selectedAuthor == null)
+            {
+                Console.WriteLine("Författaren hittades inte.");
+                return;
+            }
+
+            Console.WriteLine($"\nÄr du säker på att du vill ta bort {selectedAuthor.FullName}?");
+            Console.WriteLine($"Detta kommer även ta bort {selectedAuthor.BookCount} böcker.");
+            Console.Write("Skriv 'JA' för att bekräfta: ");
+
+            if (Console.ReadLine()?.ToUpper() == "JA")
+            {
+                try
+                {
+                    using (var transaction = context.Database.BeginTransaction())
+                    {
+                        var deleteQuery = FormattableStringFactory.Create(@"
+                    DELETE FROM dbo.Lagersaldo 
+                    WHERE ISBN IN (SELECT ISBN13 FROM dbo.Böcker WHERE [FörfattareId] = {0});
+                    
+                    DELETE FROM dbo.Böcker 
+                    WHERE [FörfattareId] = {0};
+                    
+                    DELETE FROM dbo.[Författare] 
+                    WHERE Id = {0}", authorId);
+
+                        var rowsAffected = context.Database.ExecuteSql(deleteQuery);
+
+                        if (rowsAffected > 0)
+                        {
+                            transaction.Commit();
+                            Console.WriteLine("Författaren och alla tillhörande böcker har tagits bort!");
+                        }
+                        else
+                        {
+                            transaction.Rollback();
+                            Console.WriteLine("Kunde inte ta bort författaren. Kontrollera om författaren fortfarande finns.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ett fel uppstod: {ex.Message}");
+                }
+            }
+        }
     }
 }
+   
+
+
+
+
 
 
 
